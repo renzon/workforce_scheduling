@@ -28,7 +28,6 @@ def readData(filepath):
 # from a feasible solution, construct the workforce schedule as pandas dataframe
 def generateSchedule(x,z,nr_employees, nr_days, nr_slots, list_employees, days, slots, input_days):
     column_names = ["Employee", "Date", "Day", "Start", "End"]
-    plan = pd.DataFrame(columns = column_names)
 
     rows = []
 
@@ -70,7 +69,7 @@ def generateSchedule(x,z,nr_employees, nr_days, nr_slots, list_employees, days, 
             rows.append(dic)
 
             
-    plan = plan.append(rows)
+    plan = pd.DataFrame(rows, columns=column_names)
             
     return plan
 
