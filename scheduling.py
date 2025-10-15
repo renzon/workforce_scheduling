@@ -5,7 +5,7 @@ Created on Tue Mar 24 21:29:42 2020
 @author: Denis Wolf
 """
 
-from mip import Model, xsum, BINARY, OptimizationStatus
+from mip import Model, xsum, BINARY, INTEGER, OptimizationStatus
 import pandas as pd
 import datetime
 import plotly.figure_factory as ff
@@ -210,6 +210,8 @@ x = [[[model.add_var(name = "x_" + list_employees[m] + "_" + days[t] + "_" + str
 # boolean decision variable: z[m][t][s]: employee m starts working day on day t in slot s
 z = [[[model.add_var(name = "z_" + list_employees[m] + "_" + days[t] + "_" + str(slots[s]),var_type=BINARY) for s in range(nr_slots)] for t in range(nr_days)] for m in range(nr_employees)]
 
+
+
 model.objective = sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
 
 # constraint demand satisfaction: the demand for employees per slot must be met or exceeded
@@ -236,6 +238,18 @@ for m in range(nr_employees):
     for t in range(nr_days):
         constraint_name = "constraint_one_start_" + list_employees[m] + "_" + days[t]
         model += xsum(z[m][t][s] for s in range(nr_slots)) <= 1, constraint_name
+
+# optional constraint: max continue work days for each employee
+if parameters.loc["max_employee_consecutive_working_days"]["to consider"] == "yes":
+    max_continue_work_days=int(parameters.loc["max_employee_consecutive_working_days"]['Value'])
+    for m in range(nr_employees):
+        for t in range(max_continue_work_days, nr_days):
+            constraint_name = "max_employee_consecutive_working_days_" + list_employees[m] + "_" + days[t]
+            model += xsum(z[m][d][s]
+                          for d in range(t-max_continue_work_days, t + 1)
+                          for s in range(nr_slots)
+                          ) <= max_continue_work_days, constraint_name
+
         
 # constraint sequential shifts: a shift of an employee has to be consecutive
 for m in range(nr_employees):
