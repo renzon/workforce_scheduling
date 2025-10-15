@@ -79,8 +79,16 @@ def getGantt(plan):
     df = plan.copy()
     df["Resource"] = df["Employee"]
     df = df.rename(columns = {"Employee" : "Task", "Start" : "Start", "End": "Finish"})
+
+    step = (255 // (int(len(df["Resource"] ) ** (1 / 3))))
+    colors = []
+
+    for r in range(0, 256, step):
+        for g in range(0, 256, step):
+            for b in range(0, 256, step):
+                colors.append(f'rgb({r}, {g}, {b})')
     
-    fig = ff.create_gantt(df,index_col='Resource', group_tasks=True, title = "Workforce schedule")
+    fig = ff.create_gantt(df, colors,index_col='Resource', group_tasks=True, title = "Workforce schedule")
     return fig
 
 # calculate weekly working times for the employees (including minus hours and overtime)
