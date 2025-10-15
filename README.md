@@ -92,5 +92,19 @@ One can even deploy the chart in a [website](https://orspec.github.io/workforce_
 
 You can see immediately that Mary and Jaden don't work on April 13th.
 
+# How to run the project
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+and run the script:
+
+```
+python schedule.py
+```
+
 
 
