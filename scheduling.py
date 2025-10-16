@@ -261,6 +261,16 @@ if parameters.loc["max_employee_consecutive_working_days"]["to consider"] == "ye
         model += xsum(y[m][d] for d in
                       range(nr_days)) <= max_continue_work_days, constraint_name
 
+# Consecutive worked Sundays. On BR women can not work 2 consecutive Sundays. Men can not work 4 consecutive Sundays.
+for m in range(nr_employees):
+    consecutive_worked_sundays= int(data_employees.loc[list_employees[m], "consecutive_worked_sundays"])
+    max_consecutive_worked_sundays= int(data_employees.loc[list_employees[m], "max_consecutive_worked_sundays"])
+    constraint_name = "max_worked_sundays_"+ list_employees[m]
+    model += y[m][-1] <= (max_consecutive_worked_sundays - consecutive_worked_sundays +0.1), constraint_name # avoiding error with -0
+
+
+
+
 # optional constraint: each employee can only work a given amount of hours per week
 if parameters.loc["max_hours_per_week"]["to consider"] == "yes":
     for m in range(nr_employees):
