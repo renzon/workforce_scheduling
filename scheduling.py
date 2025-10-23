@@ -5,7 +5,7 @@ Created on Tue Mar 24 21:29:42 2020
 @author: Denis Wolf
 """
 
-from mip import Model, xsum, BINARY, OptimizationStatus
+from mip import Model, xsum, BINARY, INTEGER, OptimizationStatus
 import pandas as pd
 import datetime
 import plotly.figure_factory as ff
@@ -209,9 +209,28 @@ z = [[[model.add_var(name="z_" + list_employees[m] + "_" + days[t] + "_" + str(s
 y = [[model.add_var(name="y_" + list_employees[m] + "_" + days[t], var_type=BINARY) for t in range(nr_days)] for m in
      range(nr_employees)]
 
+max_extra_slots_per_employee = parameters.loc["max_extra_slots_per_employee"]["Value"]
+extra_slots_per_day = [[model.add_var(name="extra_slots_day_" + list_employees[m] + "_" + days[t], var_type=INTEGER,
+                                      lb=0, ub=max_extra_slots_per_employee)
+                        for t in range(nr_days)] for m in range(nr_employees)]
+
 model.objective = sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
 
 regular_slots_per_day = parameters.loc["regular_slots_per_day"]["Value"]
+
+# constraint: Link extra hours to x
+
+max_slots = regular_slots_per_day + max_extra_slots_per_employee
+for m in range(nr_employees):
+    for t in range(nr_days):
+        rhs = float(data_employees.loc[list_employees[m], days[t]])
+        constraint_name = "max_work_per_day" + list_employees[m] + "_" + days[t]
+        model += xsum(x[m][t][s] for s in range(nr_slots)) <= rhs * 2, constraint_name
+
+        # Define extra_slots_per_day: extra slots worked beyond regular slots
+        constraint_name = "constraint_extra_slots_day_" + list_employees[m] + "_" + days[t]
+        daily_slots_worked = xsum(x[m][t][s] for s in range(nr_slots))
+        model += extra_slots_per_day[m][t] >= daily_slots_worked - regular_slots_per_day, constraint_name
 
 # link y to x: y[m][t] = 1 if employee m works any slot on day t
 for m in range(nr_employees):
@@ -223,13 +242,18 @@ for m in range(nr_employees):
             m] + "_" + days[t]
 
 # constraint demand satisfaction: the demand for employees per slot must be met or exceeded
+max_extra_employees_per_shift = float(parameters.loc["max_extra_employees_per_shift"]["Value"])
 for t in range(nr_days):
     for s in range(nr_slots):
-        constraint_name = "constraint_demand_" + days[t] + "_" + str(slots[s])
+        constraint_name = "constraint_demand_min" + days[t] + "_" + str(slots[s])
 
         # important to cast: pandas gives back numpy int64
         rhs = float(demand.loc[days[t], slots[s]])
         model += xsum(x[m][t][s] for m in range(nr_employees)) >= rhs, constraint_name
+
+        constraint_name = "constraint_demand_max" + days[t] + "_" + str(slots[s])
+
+        model += xsum(x[m][t][s] for m in range(nr_employees)) <= (rhs + max_extra_employees_per_shift), constraint_name
 
 # optional constraint: Demand for open store in first slot
 if parameters.loc["demand_can_open_store"]["to consider"] == "yes":
