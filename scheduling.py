@@ -214,7 +214,11 @@ extra_slots_per_day = [[model.add_var(name="extra_slots_day_" + list_employees[m
                                       lb=0, ub=max_extra_slots_per_employee)
                         for t in range(nr_days)] for m in range(nr_employees)]
 
-model.objective = sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
+model.objective = (
+        sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
+        +
+        sum(extra_slots_per_day[m][t] for m in range(nr_employees) for t in range(nr_days))
+)
 
 regular_slots_per_day = parameters.loc["regular_slots_per_day"]["Value"]
 
