@@ -9,7 +9,6 @@ from mip import Model, xsum, BINARY, OptimizationStatus
 import pandas as pd
 import datetime
 import plotly.figure_factory as ff
-import plotly.io as pio
 
 
 # read input data from excel file (has multiple sheets)
@@ -432,16 +431,16 @@ def calculate_demand_vs_planned(demand, plan):
 
 # if the instance was solved (optimal or feasible solution found), construct the workforce schedule for a week and visualize via gantt chart
 if solved:
-    print("Generate Gantt Chart.")
+    # print("Generate Gantt Chart.")
     plan = generateSchedule(x, z, nr_employees, nr_days, nr_slots, list_employees, days, slots, input_days)
-    gantt = getGantt(plan)
+    # gantt = getGantt(plan)
 
     # show gantt chart in default browser
-    pio.renderers.default = 'browser'
+    # pio.renderers.default = 'browser'
     # gantt.show()
 
     # create HTML file for gantt chart so that it can be deployed
-    pio.write_html(gantt, file="index.html", auto_open=True)
+    # pio.write_html(gantt, file="index.html", auto_open=True)
 
     # generate solution as excel file
     weeklyTimes = calculateWorkingTimes(list_employees, plan, data_employees)
