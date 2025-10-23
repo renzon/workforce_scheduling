@@ -25,7 +25,7 @@ def readData(filepath):
 
 # from a feasible solution, construct the workforce schedule as pandas dataframe
 def generateSchedule(x, z, nr_employees, nr_days, nr_slots, list_employees, days, slots, input_days):
-    column_names = ["Employee", "Date", "Day", "Start", "End"]
+    column_names = ["Employee", "Date", "Day", "Start", "End", 'Extra Hours']
 
     rows = []
 
@@ -55,6 +55,7 @@ def generateSchedule(x, z, nr_employees, nr_days, nr_slots, list_employees, days
             dic["Employee"] = employee
             dic["Date"] = date_datetime
             dic["Day"] = day
+            dic['Extra Hours'] = 0
 
             # check if employee works on given day
             if start is not None and end is not None:
@@ -62,6 +63,10 @@ def generateSchedule(x, z, nr_employees, nr_days, nr_slots, list_employees, days
                                           start.minute)
                 end = datetime.datetime(date_datetime.year, date_datetime.month, date_datetime.day, end.hour,
                                         end.minute) + datetime.timedelta(minutes=30)
+                if end is not None:
+                    daily_worked_hours = (end - start).total_seconds() / 3600
+                    if daily_worked_hours > regular_slots_per_day * 2:
+                        dic['Extra Hours'] = (daily_worked_hours - 2 * regular_slots_per_day)
 
             dic["Start"] = start
             dic["End"] = end
@@ -126,7 +131,7 @@ def calculateWorkingTimes(employees, plan, data_employees):
 # generate an excel file containing to sheets:
 # Schedule: Start and end time of the employees' shifts
 # weeklyHours: weekly working hours, minus hours and overtime per employee
-def writeToExcel(plan, weeklyHours):
+def writeToExcel(plan, weeklyHours, demand_vs_planned):
     plan_excel = plan.copy()
 
     plan_excel["Date"] = plan_excel["Date"].dt.strftime('%d.%m.%Y')
@@ -136,6 +141,7 @@ def writeToExcel(plan, weeklyHours):
     with pd.ExcelWriter("Solution.xlsx", engine='xlsxwriter') as writer:
         plan_excel.to_excel(writer, sheet_name="Schedule", index=False, float_format="%0.1f")
         weeklyHours.to_excel(writer, sheet_name="weeklyHours", index=True)
+        demand_vs_planned.to_excel(writer, sheet_name="peopleBySlot", index=True)
 
         workbook = writer.book
 
@@ -206,6 +212,8 @@ y = [[model.add_var(name="y_" + list_employees[m] + "_" + days[t], var_type=BINA
 
 model.objective = sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
 
+regular_slots_per_day = parameters.loc["regular_slots_per_day"]["Value"]
+
 # link y to x: y[m][t] = 1 if employee m works any slot on day t
 for m in range(nr_employees):
     for t in range(nr_days):
@@ -256,20 +264,19 @@ if parameters.loc["max_employee_consecutive_working_days"]["to consider"] == "ye
         last_consecutive_worked_days = data_employees.loc[list_employees[m], "last_consecutive_worked_days"]
         constraint_name = "max_employee_consecutive_working_days_last_week" + list_employees[m] + "_" + days[t]
         model += xsum(y[m][d] for d in
-                      range(nr_days - last_consecutive_worked_days)) <= max_continue_work_days - last_consecutive_worked_days, constraint_name
+                      range(
+                          nr_days - last_consecutive_worked_days)) <= max_continue_work_days - last_consecutive_worked_days, constraint_name
         constraint_name = "max_employee_consecutive_working_days_this_week" + list_employees[m] + "_" + days[t]
         model += xsum(y[m][d] for d in
                       range(nr_days)) <= max_continue_work_days, constraint_name
 
 # Consecutive worked Sundays. On BR women can not work 2 consecutive Sundays. Men can not work 4 consecutive Sundays.
 for m in range(nr_employees):
-    consecutive_worked_sundays= int(data_employees.loc[list_employees[m], "consecutive_worked_sundays"])
-    max_consecutive_worked_sundays= int(data_employees.loc[list_employees[m], "max_consecutive_worked_sundays"])
-    constraint_name = "max_worked_sundays_"+ list_employees[m]
-    model += y[m][-1] <= (max_consecutive_worked_sundays - consecutive_worked_sundays +0.1), constraint_name # avoiding error with -0
-
-
-
+    consecutive_worked_sundays = int(data_employees.loc[list_employees[m], "consecutive_worked_sundays"])
+    max_consecutive_worked_sundays = int(data_employees.loc[list_employees[m], "max_consecutive_worked_sundays"])
+    constraint_name = "max_worked_sundays_" + list_employees[m]
+    model += y[m][-1] <= (
+            max_consecutive_worked_sundays - consecutive_worked_sundays + 0.1), constraint_name  # avoiding error with -0
 
 # optional constraint: each employee can only work a given amount of hours per week
 if parameters.loc["max_hours_per_week"]["to consider"] == "yes":
@@ -402,6 +409,27 @@ else:
     print("ERROR!")
     print(status)
 
+
+def calculate_demand_vs_planned(demand, plan):
+    planned = demand.copy()
+    planned.iloc[:, :] = 0
+    thirty_minutes= datetime.timedelta(minutes=30)
+
+    for key, row in plan.iterrows():
+        day = row["Day"]
+        start = row["Start"]
+        end = row["End"]
+        if pd.isna(start) or pd.isna(end):
+            continue
+        column = start
+        while column < end:
+            planned.loc[day, column.time()] += 1
+            column += thirty_minutes
+
+
+    return planned
+
+
 # if the instance was solved (optimal or feasible solution found), construct the workforce schedule for a week and visualize via gantt chart
 if solved:
     print("Generate Gantt Chart.")
@@ -417,4 +445,5 @@ if solved:
 
     # generate solution as excel file
     weeklyTimes = calculateWorkingTimes(list_employees, plan, data_employees)
-    writeToExcel(plan, weeklyTimes)
+    demand_vs_planned = calculate_demand_vs_planned(demand, plan)
+    writeToExcel(plan, weeklyTimes, demand_vs_planned)
