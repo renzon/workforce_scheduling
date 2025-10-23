@@ -242,7 +242,6 @@ for m in range(nr_employees):
             m] + "_" + days[t]
 
 # constraint demand satisfaction: the demand for employees per slot must be met or exceeded
-max_extra_employees_per_shift = float(parameters.loc["max_extra_employees_per_shift"]["Value"])
 for t in range(nr_days):
     for s in range(nr_slots):
         constraint_name = "constraint_demand_min" + days[t] + "_" + str(slots[s])
@@ -250,10 +249,6 @@ for t in range(nr_days):
         # important to cast: pandas gives back numpy int64
         rhs = float(demand.loc[days[t], slots[s]])
         model += xsum(x[m][t][s] for m in range(nr_employees)) >= rhs, constraint_name
-
-        constraint_name = "constraint_demand_max" + days[t] + "_" + str(slots[s])
-
-        model += xsum(x[m][t][s] for m in range(nr_employees)) <= (rhs + max_extra_employees_per_shift), constraint_name
 
 # optional constraint: Demand for open store in first slot
 if parameters.loc["demand_can_open_store"]["to consider"] == "yes":
