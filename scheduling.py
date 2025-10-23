@@ -185,6 +185,9 @@ nr_employees = len(list_employees)
 nr_days = len(days)
 nr_slots = len(slots)
 
+weekly_avg_slots_per_employe= nr_days * nr_slots / nr_employees
+
+
 if nr_employees == 0:
     raise Exception("Enter at least 1 employee!")
 else:
@@ -214,9 +217,12 @@ extra_slots_per_day = [[model.add_var(name="extra_slots_day_" + list_employees[m
                                       lb=0, ub=max_extra_slots_per_employee)
                         for t in range(nr_days)] for m in range(nr_employees)]
 
+
+
+# Update objective to minimize total deviation
 model.objective = (
-        sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
-        +
+    sum(x[m][t][s] for m in range(nr_employees) for t in range(nr_days) for s in range(nr_slots))
+    +
         sum(extra_slots_per_day[m][t] for m in range(nr_employees) for t in range(nr_days))
 )
 
