@@ -5,6 +5,12 @@ A special case of the workforce scheduling problem is modelled and solved using 
 * [pandas](https://pandas.pydata.org/) for data input and postprocessing the solution
 * [plotly](https://plotly.com/python/) for visualization of the solution
 
+## How to Run
+
+1. Install python on you
+2. Install the dependencies: 'python -m pip install -r requirements.txt'
+3. Run the script: 'python schedule.py
+
 ## Problem description
 A shop is open from Monday to Saturday. The opening hours are the same for each day. For each 30 minute slot during the opening hours there exists a demand for a specific number of employees. 
 
